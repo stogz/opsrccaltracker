@@ -1,1 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Calorie Tracker</title>
+<meta name="description" content="Open source calorie and macro tracker.">
+<link rel="stylesheet" href="/style/app.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🍎</text></svg>">
+</head>
+<body>
 
+<header class="topbar">
+  <h1><span aria-hidden="true">🍎</span> Calorie Tracker</h1>
+  <div class="topbar-actions" id="account" hidden>
+    <span class="who" id="who"></span>
+    <button type="button" class="ghost" id="settings-toggle">Goals</button>
+    <button type="button" class="ghost" id="sign-out">Sign out</button>
+  </div>
+</header>
+
+<main>
+  <!-- shown when scripts/config.js still has the placeholder key -->
+  <section class="card notice" id="setup" hidden>
+    <h2>One step left</h2>
+    <p>Paste your Supabase <strong>anon</strong> key into <code>scripts/config.js</code> and redeploy.
+       You'll find it under <em>Project Settings → API Keys → anon / public</em>.</p>
+    <p class="muted">The anon key is public by design — row level security is what protects the data.</p>
+  </section>
+
+  <section class="card" id="signin" hidden>
+    <h2>Sign in</h2>
+    <p class="muted">We'll email you a link. No password to remember.</p>
+    <form id="signin-form">
+      <input type="email" id="email" placeholder="you@example.com" required autocomplete="email">
+      <button type="submit" class="primary">Email me a link</button>
+    </form>
+    <p class="status" id="signin-status" role="status"></p>
+  </section>
+
+  <div id="app" hidden>
+
+    <section class="card" id="settings" hidden>
+      <h2>Daily goals</h2>
+      <form id="goals-form" class="goals-grid">
+        <label>Calories <input type="number" id="goal-kcal" min="0" max="20000" step="10" required></label>
+        <label>Protein (g) <input type="number" id="goal-protein" min="0" max="2000" step="1" required></label>
+        <label>Fat (g) <input type="number" id="goal-fat" min="0" max="2000" step="1" required></label>
+        <label>Carbs (g) <input type="number" id="goal-carbs" min="0" max="2000" step="1" required></label>
+        <button type="submit" class="primary">Save goals</button>
+      </form>
+      <p class="status" id="goals-status" role="status"></p>
+    </section>
+
+    <section class="card day">
+      <div class="day-nav">
+        <button type="button" class="ghost" id="prev-day" aria-label="Previous day">‹</button>
+        <input type="date" id="day-picker" aria-label="Date">
+        <button type="button" class="ghost" id="next-day" aria-label="Next day">›</button>
+        <button type="button" class="ghost" id="today-btn">Today</button>
+      </div>
+
+      <div class="totals" id="totals"></div>
+      <ol class="week" id="week" aria-label="Last 7 days"></ol>
+    </section>
+
+    <section class="card">
+      <h2>Add food</h2>
+      <input type="search" id="search" placeholder="Search 300+ foods — try “chicken breast”" autocomplete="off">
+      <p class="muted" id="search-hint">Or pick something you eat often:</p>
+      <ul class="results" id="results"></ul>
+      <p class="muted">
+        Can't find it?
+        <button type="button" class="linkish" id="custom-toggle">Add your own food</button>
+      </p>
+
+      <form id="custom-form" class="custom-grid" hidden>
+        <p class="muted span-all">Enter the values <strong>per 100 g</strong> — that's how the label lists them in most of the world; in the US divide the per-serving numbers by the serving size in grams and multiply by 100.</p>
+        <label class="span-all">Name <input type="text" id="c-name" maxlength="200" required></label>
+        <label>Brand <input type="text" id="c-brand" maxlength="80"></label>
+        <label>Calories <input type="number" id="c-kcal" min="0" max="900" step="0.1" required></label>
+        <label>Protein (g) <input type="number" id="c-protein" min="0" max="100" step="0.1"></label>
+        <label>Fat (g) <input type="number" id="c-fat" min="0" max="100" step="0.1"></label>
+        <label>Carbs (g) <input type="number" id="c-carbs" min="0" max="100" step="0.1"></label>
+        <button type="submit" class="primary">Save food</button>
+      </form>
+      <p class="status" id="custom-status" role="status"></p>
+    </section>
+
+    <section class="card">
+      <h2>Diary <span class="muted" id="diary-date"></span></h2>
+      <div id="diary"></div>
+    </section>
+  </div>
+</main>
+
+<dialog id="log-dialog">
+  <form method="dialog" id="log-form">
+    <h2 id="log-name">Food</h2>
+    <p class="muted" id="log-per100"></p>
+    <label>Amount
+      <div class="amount-row">
+        <input type="number" id="log-amount" min="0.01" max="10000" step="0.01" value="100" required>
+        <select id="log-unit"></select>
+      </div>
+    </label>
+    <label>Meal
+      <select id="log-meal">
+        <option value="breakfast">Breakfast</option>
+        <option value="lunch">Lunch</option>
+        <option value="dinner">Dinner</option>
+        <option value="snack">Snack</option>
+        <option value="other">Other</option>
+      </select>
+    </label>
+    <p class="preview" id="log-preview"></p>
+    <menu>
+      <button type="button" class="ghost" id="log-cancel">Cancel</button>
+      <button type="submit" class="primary" value="log">Add to diary</button>
+    </menu>
+  </form>
+</dialog>
+
+<footer>
+  <p class="muted">
+    Open source calorie tracker by Sam Stogsdill · nutrition data from
+    <a href="https://fdc.nal.usda.gov/" rel="noopener">USDA FoodData Central</a>
+  </p>
+</footer>
+
+<script type="module" src="/scripts/app.js"></script>
+</body>
+</html>
