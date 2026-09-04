@@ -39,7 +39,8 @@ const state = {
   day: localToday(),
   goals: { kcal_goal: 2000, protein_goal_g: 150, fat_goal_g: 65, carbs_goal_g: 250 },
   entries: [],
-  pending: null, // the food the log dialog is currently about
+  pending: null,       // the food the log dialog is currently about
+  recovering: false,   // following a password-reset link
 };
 
 const num = (v) => (v === null || v === undefined ? 0 : Number(v));
@@ -56,42 +57,167 @@ function say(el, message, kind = '') {
 }
 
 /* ------------------------------------------------------------------- auth */
+//
+// Password sign-in is the primary path because it needs no email at all. The
+// magic link and the password reset both still work, but both spend a message
+// from Supabase's email quota — which on the free tier's built-in sender is only
+// a couple an hour, shared across the whole project. See the README.
+
+const authButtons = () => document.querySelectorAll('#signin button');
+
+function setAuthBusy(busy) {
+  for (const b of authButtons()) b.disabled = busy;
+}
+
+// Supabase's messages are written for developers. These are the three a user
+// can actually hit, rewritten to say what to do next.
+function authMessage(error) {
+  const raw = error.message ?? String(error);
+  if (/invalid login credentials/i.test(raw)) {
+    return 'That email and password don\u2019t match an account.';
+  }
+  if (/rate limit|only request this after/i.test(raw)) {
+    return `${raw} — that limit is on emails only; signing in with a password above doesn\u2019t send any.`;
+  }
+  if (/email not confirmed/i.test(raw)) {
+    return 'This account still needs confirming — check your inbox for the confirmation link.';
+  }
+  return raw;
+}
+
+/** Both email-based actions need a valid address but no password. */
+function emailOnly() {
+  const field = $('email');
+  if (!field.checkValidity()) {
+    field.reportValidity();
+    return null;
+  }
+  return field.value.trim();
+}
 
 $('signin-form').addEventListener('submit', async (e) => {
   e.preventDefault();
-  const button = e.target.querySelector('button');
-  const email = $('email').value.trim();
-  button.disabled = true;
-  say($('signin-status'), 'Sending…');
+  setAuthBusy(true);
+  say($('signin-status'), 'Signing in\u2026');
+
+  const { error } = await db.auth.signInWithPassword({
+    email: $('email').value.trim(),
+    password: $('password').value,
+  });
+
+  setAuthBusy(false);
+  // On success onAuthStateChange fires and render() swaps the page over.
+  if (error) say($('signin-status'), authMessage(error), 'error');
+});
+
+$('sign-up').addEventListener('click', async () => {
+  if (!$('signin-form').reportValidity()) return;
+  setAuthBusy(true);
+  say($('signin-status'), 'Creating your account\u2026');
+
+  const { data, error } = await db.auth.signUp({
+    email: $('email').value.trim(),
+    password: $('password').value,
+    options: { emailRedirectTo: window.location.origin },
+  });
+
+  setAuthBusy(false);
+  if (error) return say($('signin-status'), authMessage(error), 'error');
+
+  // With email confirmation off, signUp returns a session and we are already in.
+  // With it on, there is no session until the link is clicked.
+  if (!data.session) {
+    say($('signin-status'), `Account created. Check ${data.user?.email ?? 'your inbox'} to confirm it, then sign in.`, 'ok');
+  }
+});
+
+$('magic-link').addEventListener('click', async () => {
+  const email = emailOnly();
+  if (!email) return;
+  setAuthBusy(true);
+  say($('signin-status'), 'Sending\u2026');
 
   const { error } = await db.auth.signInWithOtp({
     email,
     options: { emailRedirectTo: window.location.origin },
   });
 
+  setAuthBusy(false);
+  say($('signin-status'),
+      error ? authMessage(error) : `Check ${email} for your sign-in link.`,
+      error ? 'error' : 'ok');
+});
+
+$('forgot').addEventListener('click', async () => {
+  const email = emailOnly();
+  if (!email) return;
+  setAuthBusy(true);
+  say($('signin-status'), 'Sending\u2026');
+
+  const { error } = await db.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin,
+  });
+
+  setAuthBusy(false);
+  say($('signin-status'),
+      error ? authMessage(error) : `Check ${email} for a link to set a new password.`,
+      error ? 'error' : 'ok');
+});
+
+// Following a reset link signs the user in and fires PASSWORD_RECOVERY. Until
+// they pick a new password we show the recovery form instead of the diary.
+$('recovery-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const button = e.target.querySelector('button');
+  button.disabled = true;
+  say($('recovery-status'), 'Saving\u2026');
+
+  const { error } = await db.auth.updateUser({ password: $('new-password').value });
+
   button.disabled = false;
-  if (error) {
-    // The built-in SMTP on the free tier allows only a handful of mails an hour.
-    say($('signin-status'), error.message, 'error');
-  } else {
-    say($('signin-status'), `Check ${email} for your sign-in link.`, 'ok');
-  }
+  if (error) return say($('recovery-status'), authMessage(error), 'error');
+
+  state.recovering = false;
+  lastRenderedUser = null; // updateUser reports the same user id, so force a render
+  say($('recovery-status'), '', '');
+  e.target.reset();
+  render();
 });
 
 $('sign-out').addEventListener('click', () => db.auth.signOut());
 
-db.auth.onAuthStateChange((_event, session) => {
-  state.user = session?.user ?? null;
+// Auth events repeat: INITIAL_SESSION, a token refresh every hour, and a
+// SIGNED_IN on tab focus all arrive with the same user. Re-rendering on each one
+// would re-run every query on the page, so only an actual change gets through.
+let lastRenderedUser;
+
+db.auth.onAuthStateChange((event, session) => {
+  const user = session?.user ?? null;
+
+  if (event === 'PASSWORD_RECOVERY') {
+    state.user = user;
+    state.recovering = true;
+    lastRenderedUser = null;
+    return render();
+  }
+
+  if (user?.id === lastRenderedUser && !state.recovering) return;
+  lastRenderedUser = user?.id ?? null;
+  state.user = user;
+  state.recovering = false;
   render();
 });
 
 async function render() {
   const signedIn = Boolean(state.user);
-  $('signin').hidden = signedIn;
-  $('app').hidden = !signedIn;
-  $('account').hidden = !signedIn;
+  const recovering = state.recovering;
 
-  if (!signedIn) return;
+  $('recovery').hidden = !recovering;
+  $('signin').hidden = signedIn || recovering;
+  $('app').hidden = !signedIn || recovering;
+  $('account').hidden = !signedIn || recovering;
+
+  if (!signedIn || recovering) return;
 
   $('who').textContent = state.user.email ?? '';
   $('day-picker').value = state.day;
@@ -533,6 +659,13 @@ function escapeHtml(s) {
 /* ------------------------------------------------------------------ start */
 
 $('day-picker').value = state.day;
+
+// onAuthStateChange fires INITIAL_SESSION on startup, which paints the page.
+// getSession() is here as a backstop in case that event is ever missed; the
+// dedupe in the listener means whichever lands second is a no-op.
 const { data: { session } } = await db.auth.getSession();
-state.user = session?.user ?? null;
-render();
+if (lastRenderedUser === undefined) {
+  lastRenderedUser = session?.user?.id ?? null;
+  state.user = session?.user ?? null;
+  render();
+}

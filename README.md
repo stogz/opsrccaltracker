@@ -69,10 +69,30 @@ ships in every Supabase web app and grants nothing on its own, because RLS
 decides what any caller can see. The `service_role` key is the secret one and
 must never go in this file.
 
-**4. Turn on email sign-in.** Authentication → Providers → Email, with "Confirm
-email" on. The app uses magic links, so there are no passwords to store.
+**4. Turn on email sign-in.** Authentication → Providers → Email. The app offers
+three ways in, all through that one provider:
+
+- **Email + password** — the default, and the only one that sends no email at all.
+- **Magic link** — behind "Email me a link instead".
+- **Password reset** — behind "Forgot password?", which returns to the site and
+  swaps the diary for a "set a new password" form.
+
+**5. Set the redirect URLs.** Authentication → URL Configuration. Set **Site
+URL** to your deployed origin and add it to **Redirect URLs** as
+`https://your-site.example/**`. Supabase ignores the redirect the app asks for
+unless it's on that list, and falls back to the Site URL — which on a new
+project is `http://localhost:3000`. Getting this wrong is why an emailed link
+lands on a dead localhost page. Add `https://your-project-*.vercel.app/**` too
+if you want preview deployments to work.
 
 Push to `main` and Vercel redeploys.
+
+### Signing in without any email
+
+While you're building, or any time the email quota below gets in the way, skip
+email entirely: Authentication → Users → **Add user**, with "Auto Confirm User"
+ticked. Then sign in with that email and password on the site. No message is
+sent, and nothing is rate limited.
 
 ### Updating the catalog
 
@@ -120,10 +140,14 @@ The limits that will actually bite:
 
 - **Projects pause after 7 days with no activity.** A paused project returns
   errors until you resume it from the dashboard. Any real traffic prevents this.
-- **The built-in email sender is rate-limited** to a handful of messages an
-  hour, shared across the whole project — fine while you're the only user,
-  not fine for a public launch. Configure custom SMTP under Authentication →
-  Emails before inviting anyone.
+- **The built-in email sender is rate-limited** to a couple of messages an hour,
+  shared across the whole project and counting every kind of auth mail together
+  — so retrying with a different address doesn't help. Password sign-in avoids
+  it completely; magic links, signup confirmations and password resets all spend
+  from it. The current numbers are on the Authentication → Rate Limits page.
+  Supabase treats this sender as development-only and doesn't guarantee
+  delivery, so configure custom SMTP (Authentication → Emails → SMTP Settings)
+  before inviting anyone. Doing that also makes the rate limit yours to set.
 - **No automatic backups on the free plan.** `pg_dump` occasionally if the data
   matters to you.
 
