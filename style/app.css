@@ -92,8 +92,8 @@ a { color: var(--accent); }
 /* --------------------------------------------------------------- controls */
 input, select, button { font: inherit; color: inherit; }
 
-input[type="text"], input[type="email"], input[type="number"],
-input[type="search"], input[type="date"], select {
+input[type="text"], input[type="email"], input[type="password"],
+input[type="number"], input[type="search"], input[type="date"], select {
   width: 100%;
   padding: 0.55rem 0.7rem;
   background: var(--bg);
@@ -120,8 +120,8 @@ button.linkish {
   color: var(--accent); text-decoration: underline; font-size: inherit;
 }
 
-#signin-form { display: flex; gap: 0.5rem; }
-#signin-form input { flex: 1; }
+.signin-actions { display: flex; gap: 0.5rem; margin-top: 0.25rem; }
+.signin-alt { display: flex; gap: 0.5rem; align-items: baseline; margin-bottom: 0; }
 
 .goals-grid, .custom-grid {
   display: grid; gap: 0 0.75rem;
@@ -209,7 +209,7 @@ dialog::backdrop { background: rgb(0 0 0 / 0.45); }
 dialog menu { display: flex; justify-content: flex-end; gap: 0.5rem; padding: 0; margin: 0; }
 
 @media (max-width: 30rem) {
-  #signin-form { flex-direction: column; }
+  .signin-actions { flex-direction: column; }
   .topbar { flex-wrap: wrap; }
   .who { flex-basis: 100%; order: -1; }
 }

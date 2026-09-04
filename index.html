@@ -30,12 +30,36 @@
 
   <section class="card" id="signin" hidden>
     <h2>Sign in</h2>
-    <p class="muted">We'll email you a link. No password to remember.</p>
     <form id="signin-form">
-      <input type="email" id="email" placeholder="you@example.com" required autocomplete="email">
-      <button type="submit" class="primary">Email me a link</button>
+      <label>Email
+        <input type="email" id="email" placeholder="you@example.com" required autocomplete="email">
+      </label>
+      <label>Password
+        <input type="password" id="password" required minlength="8" autocomplete="current-password">
+      </label>
+      <div class="signin-actions">
+        <button type="submit" class="primary">Sign in</button>
+        <button type="button" class="ghost" id="sign-up">Create account</button>
+      </div>
     </form>
     <p class="status" id="signin-status" role="status"></p>
+    <p class="muted signin-alt">
+      <button type="button" class="linkish" id="magic-link">Email me a link instead</button>
+      <span aria-hidden="true">·</span>
+      <button type="button" class="linkish" id="forgot">Forgot password?</button>
+    </p>
+  </section>
+
+  <!-- shown only after following a password-reset link -->
+  <section class="card" id="recovery" hidden>
+    <h2>Set a new password</h2>
+    <form id="recovery-form">
+      <label>New password
+        <input type="password" id="new-password" required minlength="8" autocomplete="new-password">
+      </label>
+      <button type="submit" class="primary">Save password</button>
+    </form>
+    <p class="status" id="recovery-status" role="status"></p>
   </section>
 
   <div id="app" hidden>
