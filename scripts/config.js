@@ -8,4 +8,4 @@
 // Find the anon key at:
 //   Supabase dashboard -> Project Settings -> API Keys -> anon / public
 export const SUPABASE_URL = 'https://lsgcloryyutmmzfcrmht.supabase.co';
-export const SUPABASE_ANON_KEY = 'PASTE_YOUR_ANON_KEY_HERE';
+export const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxzZ2Nsb3J5eXV0bW16ZmNybWh0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODg1MzMzNDgsImV4cCI6MjEwNDEwOTM0OH0.TVbV5S2_z6FPdKS_VWW72Lv3Cad-U2HciN0MIY43OrI';
