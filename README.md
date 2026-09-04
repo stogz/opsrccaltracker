@@ -87,6 +87,14 @@ if you want preview deployments to work.
 
 Push to `main` and Vercel redeploys.
 
+### Turning email off entirely
+
+If you don't want to deal with SMTP while building, set Authentication →
+Providers → Email → **Confirm email** to off. `signUp` then returns a session
+immediately and "Create account" signs you straight in, with no message sent.
+Turn it back on before the app is public, or anyone can register with an address
+they don't own.
+
 ### Signing in without any email
 
 While you're building, or any time the email quota below gets in the way, skip

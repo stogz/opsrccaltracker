@@ -124,6 +124,16 @@ $('sign-up').addEventListener('click', async () => {
   setAuthBusy(false);
   if (error) return say($('signin-status'), authMessage(error), 'error');
 
+  // Supabase will not reveal whether an address is already registered, so
+  // signing up over an existing account returns success with an empty
+  // identities array and sends no mail at all. Saying "check your inbox" here
+  // would promise an email that is never coming.
+  if (data.user && data.user.identities?.length === 0) {
+    return say($('signin-status'),
+      'That address already has an account. Sign in with your password, or use “Forgot password?” if you don’t know it.',
+      'error');
+  }
+
   // With email confirmation off, signUp returns a session and we are already in.
   // With it on, there is no session until the link is clicked.
   if (!data.session) {
